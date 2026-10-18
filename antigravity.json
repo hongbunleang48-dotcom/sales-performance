@@ -1,0 +1,56 @@
+﻿{
+  "$schema": "https://json.schemastore.org/antigravity.json",
+  "name": "project-core",
+  "version": "1.0.0",
+  "description": "Project CORE: Coverage, Outlet & Route Excellence - Sales Intelligence Platform",
+  "stack": {
+    "frontend": {
+      "framework": "React",
+      "tooling": "Vite",
+      "language": "JavaScript",
+      "styling": "Tailwind CSS",
+      "components": "Shadcn UI",
+      "table": "TanStack Table v8",
+      "charts": "Recharts",
+      "data_fetching": "TanStack Query"
+    },
+    "backend": {
+      "framework": "FastAPI",
+      "language": "Python 3.11+",
+      "database_driver": "Motor (Async MongoDB)",
+      "validation": "Pydantic v2",
+      "auth": "python-jose (JWT) + Passlib (Bcrypt)"
+    },
+    "database": {
+      "type": "MongoDB",
+      "version": "7.0+"
+    }
+  },
+  "rules_file": ".antigravity/rules.md",
+  "conventions": {
+    "language": {
+      "frontend": "js,jsx",
+      "backend": "python"
+    },
+    "typescript": false,
+    "path_aliases": {
+      "@/*": "frontend/src/*"
+    },
+    "formatting": {
+      "tabs": false,
+      "indent": 2
+    }
+  },
+  "ignore_patterns": [
+    "**/node_modules/**",
+    "**/__pycache__/**",
+    "**/.venv/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.git/**"
+  ],
+  "scripts": {
+    "backend:dev": "uvicorn app.main:app --reload --port 8000",
+    "frontend:dev": "npm run dev --prefix frontend"
+  }
+}

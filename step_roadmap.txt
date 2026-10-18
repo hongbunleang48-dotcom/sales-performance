@@ -1,0 +1,151 @@
+Step 1: Initialize Session & Core Business Engine
+Copy and paste this into Antigravity:
+
+Plaintext
+Read "antigravity.json" and ".antigravity/rules.md". We are developing Project CORE. 
+
+Task:
+1. Review "backend/app/core/rules.py" and implement the complete decision engine function:
+   - Target >= 100% -> Achieved, Tier 1 (High)
+   - 85% <= Target < 100% -> On Track, Tier 2 (Medium)
+   - Target < 85% -> Underperforming, Tier 3 (Low)
+   - Action Status: PIP Warning if credit_health == "Overdue Notice" or target < 85%. Top Incentive if target >= 100% and credit_health == "Healthy". Standard Bonus if target >= 90% and credit_health == "Healthy". Otherwise Retraining.
+2. In "backend/app/models/salesman.py", implement comprehensive Pydantic v2 schemas for Salesman (SalesmanBase, SalesmanCreate, SalesmanUpdate, SalesmanResponse) with field validations.
+3. In "backend/app/services/salesman_service.py", implement the service layer that calls the rules engine before persisting or updating documents in the MongoDB "salesmen" collection.
+
+Confirm once written and valid.
+Step 2: Full CRUD Endpoints & Live Audit Logger
+Copy and paste this once Step 1 completes:
+
+Plaintext
+Task: Complete the CRUD routes and soft deletion logic in the backend.
+
+1. In "backend/app/api/v1/salesmen.py", implement:
+   - GET /api/v1/salesmen: Paginated list with multi-field search (salesman_name, supervisor, commune), faceted filters (province, district, commune, performance_grade, action_status), range filters (min_target, max_target, min_strike, max_strike), and sort order.
+   - POST /api/v1/salesmen: Onboard a new sales representative. Automatically evaluate their tier and action status via rules.py.
+   - PATCH /api/v1/salesmen/{salesman_id}: Support inline updates for route_discipline, merchandising_score, target_achieved_pct, strike_rate_pct, and credit_health. Re-evaluate action_status and record the change in an "audit_logs" collection in MongoDB.
+   - DELETE /api/v1/salesmen/{salesman_id}: Implement soft deletion (toggle status between 'Active' and 'Inactive').
+2. In "backend/app/api/v1/territories.py":
+   - Provide cascading endpoints: /provinces, /districts?province=..., /communes?district=... derived via distinct MongoDB queries.
+3. In "backend/app/main.py": Mount these routers under /api/v1.
+
+Ensure all database queries use Motor async/await syntax.
+Step 3: Analytics Aggregation Engine
+Copy and paste this once Step 2 completes:
+
+Plaintext
+Task: Build the MongoDB Aggregation Pipeline endpoints in the backend.
+
+1. In "backend/app/services/analytics_service.py", implement aggregate pipelines for:
+   - Executive Overview: Average target realization %, average strike rate %, coverage saturation % (ratio of Compliant reps), and count of reps on PIP Warning or Overdue Notice.
+   - Route Fidelity Scatter Data: Rep-level array containing salesman_id, salesman_name, coverage_execution_pct, strike_rate_pct, and quadrant classification.
+   - Supervisor Leaderboard: Ranking of supervisors grouped by the count and proportion of Tier 1 reps under their management.
+   - Tier Distribution: Count of reps in Tier 1 (High), Tier 2 (Medium), Tier 3 (Low).
+2. In "backend/app/api/v1/analytics.py", expose these aggregation pipelines as GET endpoints.
+3. In "backend/app/main.py", ensure the analytics router is registered.
+----------------------------------------------------------------------------------------------------------
+Step 4: Frontend API Layer & Global Context
+Copy and paste this once Step 3 completes:
+
+Plaintext
+Task: Wire the frontend API clients and global filter state. Remember: strictly JavaScript (.js / .jsx), NO TypeScript.
+
+1. In "frontend/src/api/client.js", configure the Axios client instance targeting "http://localhost:8000/api/v1".
+2. In "frontend/src/api/salesmenApi.js", create API functions for: getSalesmen(params), createSalesman(data), updateSalesman(id, patch), softDeleteSalesman(id).
+3. In "frontend/src/api/analyticsApi.js", create API functions for: getExecutiveSummary(), getScatterData(), getSupervisorRankings(), getTierDistribution().
+4. In "frontend/src/api/territoryApi.js", create API functions for fetching provinces, districts, and communes.
+5. In "frontend/src/context/FilterContext.jsx", implement a React Context provider storing: search keyword, province, district, commune, performance_grade (array), action_status (array), targetRange [min, max], and a resetFilters action.
+Step 5: High-Performance Data Table & Inline Editing
+Copy and paste this once Step 4 completes:
+
+Plaintext
+Task: Build the interactive TanStack Table v8 in the frontend.
+
+1. In "frontend/src/components/common/StatusBadge.jsx", create badge styling following the rules:
+   - Emerald for Tier 1, Achieved, Compliant, Healthy, Top Incentive
+   - Amber for Tier 2, On Track, Standard Bonus, Retraining, Fair
+   - Rose for Tier 3, Underperforming, PIP Warning, Route Diverted, Overdue Notice, Poor
+2. In "frontend/src/components/table/InlineSelectCell.jsx", build an inline dropdown editor for "Route Discipline" (Compliant vs Route Diverted) and "In-Store Merchandising Score" that fires a PATCH mutation with TanStack Query.
+3. In "frontend/src/components/table/TableColumns.jsx", define columns matching the dataset: Salesman ID, Name, Supervisor, Territory, Target %, Achievement Status, Performance Grade, Strike Rate %, Coverage %, Route Discipline, MoM Growth, Merchandising Score, Credit Health, and Action Status.
+4. In "frontend/src/components/table/SalesmenTable.jsx", implement the virtualized table with server-side pagination, multi-column sorting, and clicking a row to select a representative.
+5. In "frontend/src/components/table/RepSheetDrawer.jsx", create a slide-over panel (right off-canvas drawer) showing the rep's full audit history and performance overview when selected.
+Step 6: Visual Analytics & Dashboard Assembly
+Copy and paste this once Step 5 completes:
+
+Plaintext
+Task: Construct the visual dashboards and assemble the layout.
+
+1. In "frontend/src/components/dashboard/MetricCard.jsx", create top summary KPI cards with trend indicators and Lucide React icons.
+2. In "frontend/src/components/dashboard/RouteScatterPlot.jsx", build a Recharts ScatterPlot:
+   - X-Axis: Coverage Execution %
+   - Y-Axis: Strike Rate %
+   - Quadrant reference lines at Coverage = 90% and Strike Rate = 85%.
+   - Color code dots by performance grade.
+3. In "frontend/src/components/dashboard/SupervisorRank.jsx", build a grouped bar chart ranking supervisors by Tier 1 ratio.
+4. In "frontend/src/components/dashboard/TierDonutChart.jsx", build a radial/donut chart showing Tier 1, Tier 2, and Tier 3 split.
+5. In "frontend/src/components/filters/CascadeGeography.jsx", wire the dynamic Province -> District -> Commune selectors connected to FilterContext.
+6. In "frontend/src/views/ExecutiveOverview.jsx", combine Metric Cards, Scatter Plot, Supervisor Leaderboard, and Tier Donut.
+7. In "frontend/src/views/FieldRoster.jsx", place the Sticky Filter Bar, Cascading Geography selectors, and the SalesmenTable.
+8. In "frontend/src/App.jsx", set up the root navigation with Collapsible Sidebar allowing switching b
+
+Step 6: Visual Analytics & Dashboard Assembly (Completed)
+Copy and paste this into Antigravity once Step 5 completes:
+
+Plaintext
+Task: Construct the visual dashboards and assemble the layout. Remember: strictly JavaScript (.js / .jsx), NO TypeScript.
+
+1. In "frontend/src/components/dashboard/MetricCard.jsx", create top summary KPI cards with trend indicators and Lucide React icons.
+2. In "frontend/src/components/dashboard/RouteScatterPlot.jsx", build a Recharts ScatterPlot:
+   - X-Axis: Coverage Execution %
+   - Y-Axis: Strike Rate %
+   - Quadrant reference lines at Coverage = 90% and Strike Rate = 85%.
+   - Color code dots by performance grade.
+3. In "frontend/src/components/dashboard/SupervisorRank.jsx", build a grouped bar chart ranking supervisors by Tier 1 ratio.
+4. In "frontend/src/components/dashboard/TierDonutChart.jsx", build a radial/donut chart showing Tier 1, Tier 2, and Tier 3 split.
+5. In "frontend/src/components/filters/CascadeGeography.jsx", wire the dynamic Province -> District -> Commune selectors connected to FilterContext.
+6. In "frontend/src/views/ExecutiveOverview.jsx", combine Metric Cards, Scatter Plot, Supervisor Leaderboard, and Tier Donut.
+7. In "frontend/src/views/FieldRoster.jsx", place the Sticky Filter Bar, Cascading Geography selectors, and the SalesmenTable.
+8. In "frontend/src/App.jsx", set up the root navigation with a Collapsible Sidebar allowing switching between "Executive Overview" and "Field Roster".
+Step 7: Onboarding Modal & Export Engine
+Copy and paste this once Step 6 completes:
+
+Plaintext
+Task: Complete the rep onboarding workflow and document export utilities.
+
+1. In "frontend/src/components/forms/OnboardRepModal.jsx":
+   - Build a modal dialog form using Radix UI/Tailwind to onboard a new sales rep (salesman_id, salesman_name, supervisor, province, district, commune, target_achieved_pct, strike_rate_pct, coverage_execution_pct, credit_health).
+   - Wire it to useMutation from TanStack Query with optimistic invalidation of the salesmen table query.
+2. In "backend/app/services/export_service.py":
+   - Implement CSV/Excel generation (using openpyxl/pandas) and basic PDF generation (using reportlab) that accepts the active filter criteria and returns a streamed file.
+3. In "backend/app/api/v1/reports.py":
+   - Expose GET /api/v1/reports/export/csv and GET /api/v1/reports/export/pdf.
+4. In "frontend/src/components/common/ExportButton.jsx":
+   - Wire quick trigger buttons to initiate browser downloads of filtered dashboard views.
+Step 8: Authentication & Audit History
+Copy and paste this once Step 7 completes:
+
+Plaintext
+Task: Implement lightweight JWT authentication and session management.
+
+1. In "backend/app/core/security.py":
+   - Implement bcrypt hashing and JWT token generation/validation functions.
+2. In "backend/app/api/v1/auth.py":
+   - Expose POST /api/v1/auth/login and GET /api/v1/auth/me using OAuth2PasswordRequestForm.
+3. In "backend/app/api/deps.py":
+   - Create the get_current_user dependency and enforce role protection on write/delete operations.
+4. In "frontend/src/context/AuthContext.jsx":
+   - Store JWT in memory/localStorage and manage login, logout, and authenticated user state.
+5. In "frontend/src/api/client.js":
+   - Add an Axios request interceptor attaching Authorization: Bearer <token>.
+Step 9: End-to-End Verification & Sanity Check
+Copy and paste this as the final check:
+
+Plaintext
+Task: Run quality assurance checks across both backend and frontend.
+
+1. Verify that all frontend files strictly use .js and .jsx extensions and no .ts or .tsx files were introduced.
+2. Run backend validation checks on:
+   - Data types and enum validations matching the Pur SenChey master dataset.
+   - Soft delete functionality ensuring Inactive records are excluded from active calculations.
+   - Recalculation logic during inline updates to route_discipline and merchandising_score.
+3. Verify that the UI renders without React console warnings, missing keys, or broken imports.
